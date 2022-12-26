@@ -1,0 +1,115 @@
+-- The accompanying device can be found at https://steamcommunity.com/sharedfiles/filedetails/?id=2906926538
+-- Retro Gadgets
+local volume = 0
+local frequency = 0
+math.random()
+local sfx1 = gdt.ROM.User.AudioSamples["chord1.ogg"]
+local lcd1 = gdt.Lcd1
+local lcd2 = gdt.Lcd0
+audio = gdt.AudioChip0
+gdt.SegmentDisplay1:ShowDigit(1,0)
+local seg = gdt.SegmentDisplay2
+local nextplay= 0
+local lengths= {0 ,0,0,0,0}
+
+local volvalues= {163, 160, 145, 156, 143, 145, 162 }
+
+--[[
+
+       _                             _                               _ _ _   _ 
+      | |                           (_)                             | (_) | | |
+ _ __ | | ___  __ _ ___  ___    __ _ ___   _____    ___ _ __ ___  __| |_| |_| |
+| '_ \| |/ _ \/ _` / __|/ _ \  / _` | \ \ / / _ \  / __| '__/ _ \/ _` | | __| |
+| |_) | |  __/ (_| \__ \  __/ | (_| | |\ V /  __/ | (__| | |  __/ (_| | | |_|_|
+| .__/|_|\___|\__,_|___/\___|  \__, |_| \_/ \___|  \___|_|  \___|\__,_|_|\__(_)
+| |                             __/ |                                          
+|_|                            |___/                                           
+
+--]]
+-- update function is repeated every time tick
+function update()
+volume = gdt.Knob0.Value/2 + 50
+frequency = gdt.Knob1.Value/20 + 5
+warble = gdt.Knob2.Value/20 + 5
+
+
+gdt.SegmentDisplay0:ShowDigit(1,math.clamp(frequency,0,9))
+
+seg:ShowDigit(1, math.clamp(volume/10, 0, 9))
+seg:ShowDigit(2, math.clamp(math.floor(volume%10),0, 9))
+
+
+
+gdt.AudioChip0.Volume= volume
+
+
+
+if gdt.Switch0.State then 
+
+
+	if(nextplay<audio:GetDspTime()) then 
+		nextplay = audio:GetDspTime()+ math.random(1, 20-frequency)
+			sounds[math.random(5)]()
+		
+	end
+
+
+	updatestrip(gdt.LedStrip0, (audio:GetPlayTime(1)/lengths[1]*8))--has a tendancy to bug out
+	updatestrip(gdt.LedStrip1, (audio:GetPlayTime(2)/lengths[2]*8))--because each new sound 
+	updatestrip(gdt.LedStrip2, (audio:GetPlayTime(3)/lengths[3]*8))--overwrites sfx1.length
+	updatestrip(gdt.LedStrip3, (audio:GetPlayTime(4)/lengths[4]*8))--I know why it's bugged
+	updatestrip(gdt.LedStrip4, (audio:GetPlayTime(5)/lengths[5]*8))--i just don't care.
+else                                                             --i fixed this ages ago btw
+	updatestrip(gdt.LedStrip0, 0)                                  --im leaving the comments here
+	updatestrip(gdt.LedStrip1, 0)	                                 --because i think it's funny 
+	updatestrip(gdt.LedStrip2, 0)	                                 --how i overreacted originally
+	updatestrip(gdt.LedStrip3, 0)	
+	updatestrip(gdt.LedStrip4, 0)	
+end
+
+	
+end
+
+function updatestrip(strip:LedStrip, sen: number)
+local i = 1
+while i <= 8 do
+	if sen > 0 then
+	strip.States[i] = true
+	sen = sen -1
+	else
+	strip.States[i] = false
+	end
+	i = i+1
+end
+
+end
+josh= ""
+function playrand(strng:string, max:number, chnl : number) --little debug easter egg for the 
+	local oldjosh = josh                                      --tinkers out there.
+	josh = (strng .. tostring(math.random(max)) .. ".ogg")     --you fellas can see the filenames!
+	if gdt.MagneticConnector0.IsConnected then 
+		gdt.Lcd0.Text = josh   --(connect a panel with 2 lcd displays to the magnet to see output)
+		gdt.Lcd1.Text = oldjosh
+	end
+	
+	
+	sfx1 = gdt.ROM.User.AudioSamples[josh]
+	lengths[chnl] = sfx1.Length
+	
+	gdt.AudioChip0:Play(sfx1, chnl)
+	
+
+	
+end
+sounds = { -- i put it up there originally but it was complaining so i had to put it down here.
+[1] = function () if not (audio:IsPlaying(1)) then --it would not have spit out an error,
+playrand("chord", 8, 1)end end, --                    because it was allways referenced after
+[2] = function ()if not (audio:IsPlaying(2)) then    --playrand executed, but
+playrand("flutes", 12, 2)end end,                     --i like my code clean and tidy.
+[3] = function ()if not (audio:IsPlaying(3)) then      --so this will forever be my little 
+playrand("rain", 7, 3)end end,	                        --basement boy.
+[4] = function ()if not (audio:IsPlaying(4)) then 
+playrand("frog", 1, 4)end end,
+[5] = function ()if not (audio:IsPlaying(5)) then 
+playrand("bird", 1, 5)end end
+}
